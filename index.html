@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Мульти-розмальовка з заливкою</title>
+  <style>
+    body { text-align: center; background: #f8f8f8; font-family: sans-serif; }
+    canvas { border: 2px solid #444; touch-action: none; margin-top: 10px; }
+    #tools { margin-top: 10px; }
+    button { margin: 5px; padding: 6px 12px; }
+  </style>
+</head>
+<body>
+  <h2>🖌️ Натисни на область — і вона заллється кольором!</h2>
+  <div id="tools">
+    <label>Колір: <input type="color" id="color" value="#ff6600"></label>
+    <button onclick="clearCanvas()">Очистити</button>
+    <button onclick="download()">Зберегти</button><br>
+    <button onclick="loadPage(0)">Сторінка 1</button>
+    <button onclick="loadPage(1)">Сторінка 2</button>
+    <button onclick="loadPage(2)">Сторінка 3</button>
+    <button onclick="loadPage(3)">Сторінка 4</button>
+  </div>
+  <canvas id="canvas" width="800" height="1131"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const images = ['rozmal_2_processed.png','rozmal_3_processed.png','rozmal_ка3_processed.png','розмальовка_processed.png'];
+    let current = 0;
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    img.src = images[current];
+
+    function loadPage(n) {
+      current = n;
+      img.src = images[current];
+    }
+
+    function getColor(x, y) {
+      return ctx.getImageData(x, y, 1, 1).data;
+    }
+
+    function match(a, b) {
+      return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+    }
+
+    function floodFill(x, y, fill) {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      const width = canvas.width;
+      const height = canvas.height;
+      const target = getColor(x, y);
+      if (match(target, fill)) return;
+      const stack = [[x, y]];
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        const idx = (cy * width + cx) * 4;
+        const curr = [data[idx], data[idx+1], data[idx+2]];
+        if (match(curr, target)) {
+          data[idx] = fill[0]; data[idx+1] = fill[1]; data[idx+2] = fill[2];
+          if (cx+1 < width) stack.push([cx+1, cy]);
+          if (cx-1 >= 0) stack.push([cx-1, cy]);
+          if (cy+1 < height) stack.push([cx, cy+1]);
+          if (cy-1 >= 0) stack.push([cx, cy-1]);
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    canvas.addEventListener('click', e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(e.clientX - rect.left);
+      const y = Math.floor(e.clientY - rect.top);
+      const hex = document.getElementById('color').value;
+      const val = parseInt(hex.slice(1), 16);
+      const rgb = [(val >> 16) & 255, (val >> 8) & 255, val & 255];
+      floodFill(x, y, rgb);
+    });
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'rozfarbovano.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  </script>
+</body>
+</html>
